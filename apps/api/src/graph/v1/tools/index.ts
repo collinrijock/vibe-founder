@@ -9,8 +9,9 @@ import { identifyGapsTool, prioritizeActionsTool } from "./analysis.js";
 import { listAgentsTool, runAgentTool, WRITE_TOOLS } from "./agents.js";
 import { askFounderQuestionsTool } from "./questions.js";
 import { convertToBusinessTool } from "./convert-business.js";
+import { COMPOSIO_TOOLS, COMPOSIO_WRITE_TOOLS } from "./composio-tools.js";
 
-export const allTools: DynamicStructuredTool[] = [
+export const internalTools: DynamicStructuredTool[] = [
   searchNotesTool,
   loadAspectTool,
   loadAllNotesTool,
@@ -23,7 +24,17 @@ export const allTools: DynamicStructuredTool[] = [
   convertToBusinessTool,
 ];
 
-export { WRITE_TOOLS };
+export const allTools: DynamicStructuredTool[] = [
+  ...internalTools,
+  ...COMPOSIO_TOOLS,
+];
+
+const ALL_WRITE_TOOLS = new Set([
+  ...WRITE_TOOLS,
+  ...COMPOSIO_WRITE_TOOLS,
+]);
+
+export { ALL_WRITE_TOOLS as WRITE_TOOLS };
 
 export function getToolByName(
   name: string

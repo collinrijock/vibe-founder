@@ -41,3 +41,27 @@ export interface PendingApprovalEntity {
   createdAt: string;
   resolvedAt: string | null;
 }
+
+export interface SupportedProvider {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: "communication" | "productivity" | "financial" | "crm" | "social";
+  appName: string;
+}
+
+export interface ConnectionEntityWithProvider extends ConnectionEntityBase {
+  providerInfo?: SupportedProvider;
+}
+
+export interface ConnectionEntityBase {
+  id: string;
+  userId: string;
+  provider: string;
+  accountLabel: string;
+  status: "active" | "expired" | "revoked";
+  composioConnectionId: string;
+  lastUsedAt: string | null;
+  connectedAt: string;
+}

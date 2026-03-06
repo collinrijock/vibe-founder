@@ -17,6 +17,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^1",
     "@anthropic-ai/sdk": "^0.39",
+    "@composio/core": "^0.6.4",
     "@langchain/anthropic": "^0.3",
     "@langchain/community": "^0.3",
     "@langchain/core": "^0.3",
