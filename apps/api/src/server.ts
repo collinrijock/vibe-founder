@@ -16,6 +16,8 @@ import { copilotRouter } from "./routes/copilot.js";
 import { logsRouter } from "./routes/logs.js";
 import { businessesRouter } from "./routes/businesses.js";
 import { mentionsRouter } from "./routes/mentions.js";
+import { connectionsRouter } from "./routes/connections.js";
+import { approvalsRouter } from "./routes/approvals.js";
 import { getVectorStore } from "./services/vectorstore.js";
 import prisma from "./lib/prisma.js";
 import { createLogger } from "./lib/logger.js";
@@ -42,6 +44,8 @@ app.use("/api/agents", agentsRouter);
 app.use("/api/logs", logsRouter);
 app.use("/api/businesses", businessesRouter);
 app.use("/api/mentions", mentionsRouter);
+app.use("/api/connections", connectionsRouter);
+app.use("/api/approvals", approvalsRouter);
 
 app.use(globalErrorHandler);
 

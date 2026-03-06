@@ -5,6 +5,8 @@ import { getGraph } from "../graph/v1/agent.js";
 import { createLogger } from "../lib/logger.js";
 import { createExecLogger } from "../lib/copilot/execution-logs.js";
 import { executeAgent } from "../services/agent-executor.js";
+import { createPendingApproval } from "./approvals.js";
+import { setComposioToolContext, clearComposioToolContext } from "../graph/v1/tools/composio-tools.js";
 
 const log = createLogger("copilot");
 
@@ -54,11 +56,13 @@ copilotRouter.post("/", async (req: Request, res: Response) => {
 
     const graph = await getGraph();
     const config = {
-      configurable: { thread_id: `${userId}:${threadId}`, model },
+      configurable: { thread_id: `${userId}:${threadId}`, model, userId },
       recursionLimit: 150,
     };
 
     let streamedContent = "";
+
+    setComposioToolContext(userId);
 
     try {
       const stream = graph.streamEvents(
@@ -200,6 +204,40 @@ copilotRouter.post("/", async (req: Request, res: Response) => {
               log.error("Failed to parse runAgent output for background execution");
             }
           }
+
+          if (event.name === "executeExternalAction") {
+            try {
+              const rawOutput = event.data?.output;
+              const parsed = typeof rawOutput === "string" ? JSON.parse(rawOutput) : rawOutput;
+              if (parsed?.status === "requires_approval") {
+                createPendingApproval({
+                  userId,
+                  businessId: "default",
+                  agentRunId: "copilot",
+                  tool: parsed.action,
+                  provider: parsed.provider || "",
+                  action: parsed.action,
+                  description: parsed.description || "",
+                  riskLevel: parsed.riskLevel || "write_high",
+                  preview: parsed.preview || {},
+                }).then((approval) => {
+                  sendEvent({
+                    type: "approval_required",
+                    approvalId: approval.id,
+                    runId: "copilot",
+                    action: parsed.action,
+                    description: parsed.description || "",
+                    riskLevel: parsed.riskLevel || "write_high",
+                    preview: parsed.preview || {},
+                  });
+                }).catch((err) => {
+                  log.error("Failed to create pending approval", err);
+                });
+              }
+            } catch {
+              log.error("Failed to parse executeExternalAction output");
+            }
+          }
         }
       }
 
@@ -250,7 +288,8 @@ copilotRouter.post("/", async (req: Request, res: Response) => {
       });
     }
 
-    // Flush all pending log writes before closing the response
+    clearComposioToolContext();
+
     await Promise.allSettled(pendingLogs);
 
     res.end();
