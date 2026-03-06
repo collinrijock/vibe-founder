@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { FaIcon } from "@/components/ui/fa-icon";
 import { useWorkspace } from "@/lib/workspace";
 import { useAgentRuns } from "@/hooks/useAgentRuns";
+import { useApprovals, type PendingApproval } from "@/hooks/useApprovals";
 import { AGENT_CATALOG } from "@vibe-founder/shared";
 import type { AgentRunEntity } from "@vibe-founder/shared";
 
@@ -56,9 +58,39 @@ function statusLabel(status: AgentRunEntity["status"]): string {
   }
 }
 
+function riskLevelColor(level: string): string {
+  switch (level) {
+    case "write_high":
+      return "text-orange-400 bg-orange-500/10";
+    case "financial":
+      return "text-red-400 bg-red-500/10";
+    case "write_low":
+      return "text-yellow-400 bg-yellow-500/10";
+    default:
+      return "text-muted-foreground bg-secondary";
+  }
+}
+
+function riskLevelLabel(level: string): string {
+  switch (level) {
+    case "write_high":
+      return "High Risk";
+    case "financial":
+      return "Financial";
+    case "write_low":
+      return "Low Risk";
+    default:
+      return level;
+  }
+}
+
+type AgentBarTab = "runs" | "approvals";
+
 export function AgentBar() {
   const { agentBarExpanded, toggleAgentBar } = useWorkspace();
   const { activeRuns, recentRuns } = useAgentRuns();
+  const { pendingApprovals, pendingCount, resolveApproval, resolving } = useApprovals();
+  const [activeTab, setActiveTab] = useState<AgentBarTab>("runs");
 
   const displayRuns = agentBarExpanded ? recentRuns : activeRuns;
 
@@ -96,6 +128,22 @@ export function AgentBar() {
           <span className="text-[10px] text-muted-foreground/50 ml-1">No active runs</span>
         )}
 
+        {pendingCount > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab("approvals");
+              if (!agentBarExpanded) toggleAgentBar();
+            }}
+            className="flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 ml-2"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+            <span className="text-[10px] font-medium text-orange-400">
+              {pendingCount} approval{pendingCount !== 1 ? "s" : ""}
+            </span>
+          </button>
+        )}
+
         <div className="ml-auto">
           <button
             onClick={(e) => {
@@ -110,26 +158,164 @@ export function AgentBar() {
       </div>
 
       {agentBarExpanded && (
-        <div className="flex-1 overflow-auto px-3 pb-3">
-          {displayRuns.length === 0 ? (
-            <div className="flex h-full items-center justify-center py-12">
-              <div className="text-center">
-                <FaIcon icon="fa-solid fa-robot" className="text-2xl text-muted-foreground/30 mb-2" />
-                <p className="text-xs text-muted-foreground">No agent runs yet</p>
-                <p className="text-[10px] text-muted-foreground/50 mt-1">
-                  Run an agent from chat or the agent catalog
-                </p>
+        <div className="flex flex-col h-[calc(100%-2.25rem)] overflow-hidden">
+          <div className="flex items-center gap-0.5 px-3 pb-1">
+            <button
+              onClick={() => setActiveTab("runs")}
+              className={cn(
+                "rounded px-2 py-0.5 text-[10px] font-medium transition-colors",
+                activeTab === "runs"
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Runs
+            </button>
+            <button
+              onClick={() => setActiveTab("approvals")}
+              className={cn(
+                "rounded px-2 py-0.5 text-[10px] font-medium transition-colors flex items-center gap-1",
+                activeTab === "approvals"
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Approvals
+              {pendingCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[9px] font-bold text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-auto px-3 pb-3">
+            {activeTab === "runs" ? (
+              displayRuns.length === 0 ? (
+                <div className="flex h-full items-center justify-center py-12">
+                  <div className="text-center">
+                    <FaIcon icon="fa-solid fa-robot" className="text-2xl text-muted-foreground/30 mb-2" />
+                    <p className="text-xs text-muted-foreground">No agent runs yet</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">
+                      Run an agent from chat or the agent catalog
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 mt-1">
+                  {displayRuns.map((run) => (
+                    <AgentRunCard key={run.id} run={run} />
+                  ))}
+                </div>
+              )
+            ) : pendingApprovals.length === 0 ? (
+              <div className="flex h-full items-center justify-center py-12">
+                <div className="text-center">
+                  <FaIcon icon="fa-solid fa-check-circle" className="text-2xl text-muted-foreground/30 mb-2" />
+                  <p className="text-xs text-muted-foreground">No pending approvals</p>
+                  <p className="text-[10px] text-muted-foreground/50 mt-1">
+                    High-risk agent actions will appear here for review
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-2 mt-1">
-              {displayRuns.map((run) => (
-                <AgentRunCard key={run.id} run={run} />
-              ))}
-            </div>
-          )}
+            ) : (
+              <div className="space-y-2 mt-1">
+                {pendingApprovals.map((approval) => (
+                  <ApprovalCard
+                    key={approval.id}
+                    approval={approval}
+                    onResolve={resolveApproval}
+                    resolving={resolving === approval.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ApprovalCard({
+  approval,
+  onResolve,
+  resolving,
+}: {
+  approval: PendingApproval;
+  onResolve: (id: string, decision: "approved" | "rejected") => Promise<boolean>;
+  resolving: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3">
+      <div className="flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full shrink-0 bg-orange-500 animate-pulse" />
+        <span className="text-xs font-medium text-foreground">{approval.action}</span>
+        <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[9px] font-medium", riskLevelColor(approval.riskLevel))}>
+          {riskLevelLabel(approval.riskLevel)}
+        </span>
+      </div>
+
+      {approval.description && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground line-clamp-2">{approval.description}</p>
+      )}
+
+      <div className="mt-1 text-[10px] text-muted-foreground/60">
+        <span>{approval.tool}</span>
+        {approval.provider && <span> via {approval.provider}</span>}
+        <span> &middot; {formatTimeAgo(approval.createdAt)}</span>
+      </div>
+
+      {approval.preview && Object.keys(approval.preview).length > 0 && (
+        <div className="mt-2 rounded bg-black/20 p-2">
+          <p className="text-[10px] font-medium text-muted-foreground mb-1">Preview:</p>
+          <div className="space-y-0.5">
+            {Object.entries(approval.preview).slice(0, 4).map(([key, value]) => (
+              <div key={key} className="flex gap-2 text-[10px]">
+                <span className="text-muted-foreground/60 shrink-0">{key}:</span>
+                <span className="text-foreground/70 truncate">
+                  {typeof value === "string" ? value : JSON.stringify(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-2.5 flex gap-2">
+        <button
+          onClick={() => onResolve(approval.id, "approved")}
+          disabled={resolving}
+          className={cn(
+            "flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
+            resolving
+              ? "bg-secondary text-muted-foreground cursor-wait"
+              : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+          )}
+        >
+          {resolving ? (
+            <FaIcon icon="fa-solid fa-spinner fa-spin" className="text-[10px]" />
+          ) : (
+            <>
+              <FaIcon icon="fa-solid fa-check" className="text-[9px] mr-1" />
+              Approve
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => onResolve(approval.id, "rejected")}
+          disabled={resolving}
+          className={cn(
+            "flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
+            resolving
+              ? "bg-secondary text-muted-foreground cursor-wait"
+              : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+          )}
+        >
+          <FaIcon icon="fa-solid fa-xmark" className="text-[9px] mr-1" />
+          Reject
+        </button>
+      </div>
     </div>
   );
 }

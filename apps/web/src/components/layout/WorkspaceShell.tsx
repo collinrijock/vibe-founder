@@ -7,6 +7,7 @@ import { useEffect, useCallback } from "react";
 import { ChatSidebar } from "@/components/sidebar/ChatSidebar";
 import { BusinessSidebar } from "@/components/sidebar/BusinessSidebar";
 import { AgentsSidebar } from "@/components/sidebar/AgentsSidebar";
+import { ConnectionsSidebar } from "@/components/sidebar/ConnectionsSidebar";
 import { AgentBar } from "@/components/workspace/AgentBar";
 import { ContextPanel } from "@/components/workspace/ContextPanel";
 
@@ -81,12 +82,7 @@ function SidebarContent() {
         </div>
       );
     case "connections":
-      return (
-        <div className="p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Connections</h3>
-          <p className="text-xs text-muted-foreground">Connect external services to enable agent actions.</p>
-        </div>
-      );
+      return <ConnectionsSidebar />;
     case "metrics":
       return (
         <div className="p-4">

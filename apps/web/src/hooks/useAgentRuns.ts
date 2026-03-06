@@ -125,6 +125,18 @@ export function useAgentRuns({ businessId }: UseAgentRunsOptions = {}) {
         }
         break;
       }
+      case "approval_needed": {
+        if ("runId" in event) {
+          setRuns((prev) =>
+            prev.map((r) =>
+              r.id === event.runId
+                ? { ...r, status: "waiting_approval" as const }
+                : r
+            )
+          );
+        }
+        break;
+      }
     }
   }, []);
 
