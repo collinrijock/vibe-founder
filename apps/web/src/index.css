@@ -1,0 +1,116 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-background: #09090b;
+  --color-foreground: #fafafa;
+  --color-card: #09090b;
+  --color-card-foreground: #fafafa;
+  --color-popover: #09090b;
+  --color-popover-foreground: #fafafa;
+  --color-primary: #fafafa;
+  --color-primary-foreground: #18181b;
+  --color-secondary: #27272a;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #27272a;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #27272a;
+  --color-accent-foreground: #fafafa;
+  --color-destructive: #7f1d1d;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #1e1e22;
+  --color-input: #1e1e22;
+  --color-ring: #d4d4d8;
+  --radius: 0.625rem;
+  --color-sidebar-background: #09090b;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-primary: #fafafa;
+  --color-sidebar-primary-foreground: #18181b;
+  --color-sidebar-accent: #27272a;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #1e1e22;
+  --color-sidebar-ring: #d4d4d8;
+
+  --animate-message-in: message-in 0.3s ease-out both;
+  --animate-slide-up: slide-up 0.25s ease-out both;
+  --animate-cursor-blink: cursor-blink 1s steps(2) infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  --color-activity-bar: #111113;
+  --color-sidebar-bg: #0a0a0c;
+  --color-workspace-bg: #09090b;
+  --color-context-panel-bg: #0a0a0c;
+  --color-agent-bar-bg: #07070a;
+  --color-panel-border: #1e1e22;
+  --color-tab-active-border: #fafafa;
+  --color-focus-ring: #3b82f6;
+
+  @keyframes message-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+.streaming-bubble {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(250, 250, 250, 0.03) 40%,
+    rgba(250, 250, 250, 0.06) 50%,
+    rgba(250, 250, 250, 0.03) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.icon-carousel {
+  animation: icon-carousel-scroll 24s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+
+@keyframes icon-carousel-scroll {
+  0%, 2%       { transform: translateY(0); }
+  10.5%, 14.5% { transform: translateY(calc(-5rem * 1)); }
+  23%, 27%     { transform: translateY(calc(-5rem * 2)); }
+  35.5%, 39.5% { transform: translateY(calc(-5rem * 3)); }
+  48%, 52%     { transform: translateY(calc(-5rem * 4)); }
+  60.5%, 64.5% { transform: translateY(calc(-5rem * 5)); }
+  73%, 77%     { transform: translateY(calc(-5rem * 6)); }
+  85.5%, 89.5% { transform: translateY(calc(-5rem * 7)); }
+  98%, 100%    { transform: translateY(calc(-5rem * 8)); }
+}
+
+.streaming-cursor {
+  display: inline;
+  animation: cursor-blink 1s steps(2) infinite;
+  color: var(--color-primary);
+  font-weight: 300;
+  user-select: none;
+}

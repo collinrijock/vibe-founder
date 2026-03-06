@@ -1,0 +1,348 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStage {
+  ONBOARDING
+  PRODUCT_DEFINITION
+  CUSTOMER_DISCOVERY
+  BUSINESS_MODEL
+  OPERATIONS
+  GROWTH
+  SCALING
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  password  String
+  stage     UserStage @default(ONBOARDING)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  chatSessions ChatSession[]
+  logs         Log[]
+  businesses   Business[]
+  connections    Connection[]
+  agentRuns      AgentRun[]
+  approvals      PendingApproval[]
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("New Chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  userId    String
+  level     String   @default("info")
+  category  String
+  source    String   @default("")
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@index([createdAt])
+}
+
+model Business {
+  id               String    @id @default(cuid())
+  userId           String
+  name             String
+  description      String    @default("")
+  stage            UserStage @default(ONBOARDING)
+  industry         String    @default("")
+  targetCustomer   String    @default("")
+  valueProposition String    @default("")
+  revenueModel     String    @default("")
+  sourceSessionId  String?
+  rawExtraction    Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plans BusinessPlan[]
+  todos Todo[]
+  initiatives   Initiative[]
+  decisions     DecisionLog[]
+  metrics       Metric[]
+  agentRuns     AgentRun[]
+  approvals     PendingApproval[]
+  dna           BusinessDNA?
+
+  @@index([userId])
+}
+
+model BusinessPlan {
+  id          String   @id @default(cuid())
+  businessId  String
+  aspectSlug  String
+  title       String
+  summary     String   @default("")
+  actions     Json     @default("[]")
+  systems     Json     @default("[]")
+  rawMarkdown String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model Todo {
+  id          String   @id @default(cuid())
+  businessId  String
+  title       String
+  description String   @default("")
+  priority    String   @default("medium")
+  status      String   @default("pending")
+  aspectSlug  String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+enum InitiativeStatus {
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum AgentRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  WAITING_APPROVAL
+  CANCELLED
+}
+
+model Initiative {
+  id              String           @id @default(cuid())
+  businessId      String
+  name            String
+  description     String           @default("")
+  goal            String           @default("")
+  successCriteria Json             @default("[]")
+  status          InitiativeStatus @default(PLANNING)
+  startDate       DateTime         @default(now())
+  targetDate      DateTime?
+  relatedAspects  Json             @default("[]")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  business    Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  milestones  Milestone[]
+  tasks       InitiativeTask[]
+  decisions   DecisionLog[]
+  agentRuns   AgentRun[]
+
+  @@index([businessId])
+}
+
+model Milestone {
+  id           String   @id @default(cuid())
+  initiativeId String
+  name         String
+  targetDate   DateTime
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  initiative Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+
+  @@index([initiativeId])
+}
+
+model InitiativeTask {
+  id           String   @id @default(cuid())
+  initiativeId String
+  title        String
+  assignee     String   @default("human")
+  agentId      String?
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  initiative Initiative @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+
+  @@index([initiativeId])
+}
+
+model DecisionLog {
+  id           String   @id @default(cuid())
+  businessId   String
+  initiativeId String?
+  decision     String
+  reasoning    String   @default("")
+  madeBy       String   @default("human")
+  agentId      String?
+  outcome      String?
+  createdAt    DateTime @default(now())
+
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  initiative Initiative? @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([initiativeId])
+}
+
+model Metric {
+  id         String   @id @default(cuid())
+  businessId String
+  key        String
+  label      String
+  value      Float
+  unit       String   @default("")
+  source     String   @default("manual")
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, key])
+}
+
+model Connection {
+  id                   String           @id @default(cuid())
+  userId               String
+  provider             String
+  accountLabel         String           @default("")
+  status               ConnectionStatus @default(ACTIVE)
+  composioConnectionId String           @default("")
+  lastUsedAt           DateTime?
+  connectedAt          DateTime         @default(now())
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AgentRun {
+  id           String         @id @default(cuid())
+  userId       String
+  businessId   String
+  agentId      String
+  initiativeId String?
+  status       AgentRunStatus @default(QUEUED)
+  input        Json           @default("{}")
+  output       Json?
+  error        String?
+  startedAt    DateTime       @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  initiative Initiative? @relation(fields: [initiativeId], references: [id], onDelete: SetNull)
+  approvals  PendingApproval[]
+  logs       AgentRunLog[]
+
+  @@index([userId])
+  @@index([businessId])
+  @@index([initiativeId])
+}
+
+model AgentRunLog {
+  id       String   @id @default(cuid())
+  runId    String
+  level    String   @default("info")
+  message  String
+  tool     String?
+  data     Json?
+  createdAt DateTime @default(now())
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+}
+
+model PendingApproval {
+  id          String         @id @default(cuid())
+  userId      String
+  businessId  String
+  agentRunId  String
+  tool        String
+  provider    String         @default("")
+  action      String
+  description String         @default("")
+  riskLevel   String         @default("write_low")
+  preview     Json           @default("{}")
+  status      ApprovalStatus @default(PENDING)
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  agentRun AgentRun @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agentRunId])
+}
+
+model BusinessDNA {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  voiceTone  String   @default("")
+  voiceAvoid Json     @default("[]")
+  voiceExamples Json  @default("[]")
+  principles Json     @default("[]")
+  boundariesMaxEmailSendsPerDay Int @default(50)
+  boundariesRequireApprovalFor Json @default("[]")
+  boundariesNeverContact Json @default("[]")
+  defaults   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
